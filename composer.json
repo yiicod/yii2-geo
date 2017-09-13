@@ -1,0 +1,26 @@
+{
+    "name": "yiicod/yii2-geo",
+    "type": "yii2-extension",
+    "license": "New BSD License",
+    "authors": [
+        {
+            "name": "Alexey Orlov",
+            "email": "aaorlov88@gmail.com",
+            "role": "Project lead"
+        },
+        {
+            "name": "Dmitriy Turchanin",
+            "email": "dimetrioos@gmail.com",
+            "role": "Core developer"
+        }
+    ],
+    "require": {
+        "yiisoft/yii2": "*",
+        "geoip/geoip": "~1.16"
+    },
+    "autoload": {
+        "psr-4": {
+            "yiicod\\geo\\": "/"
+        }
+    }
+}
