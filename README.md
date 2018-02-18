@@ -1,12 +1,11 @@
-Geo position getter extension (Yii 2)
-=====================================
+Yii Geo position getter extension
+=================================
 
 This extension will help you to find user country and country code.
 It use two online and one offline system for find information about user. You no need worry
 what system will use because all of this will do one component GeoFinder
 
-Installation
-------------
+#### Installation
 
 The preferred way to install this extension is through [composer](http://getcomposer.org/download/).
 
@@ -24,8 +23,7 @@ or add
 
 to the require section of your composer.json.
 
-Config for frontend
--------------------
+#### Config for frontend
 ```php
 'components' => [
     'geoFinder' => [
@@ -47,8 +45,7 @@ Config for frontend
 
 ```
 
-Usage
------
+#### Usage
 ```php
 \yiicod\geo\GeoGetter::getCountryName()
 \yiicod\geo\GeoGetter::getCountryCode()
