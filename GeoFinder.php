@@ -5,31 +5,36 @@ namespace yiicod\geo;
 use Exception;
 use Yii;
 use yii\base\Component;
-use yii\caching\Cache;
-use yiicod\geo\base\LocatorAbstract;
-use yiicod\geo\base\LocatorInterface;
+use yiicod\geo\base\GeoAdapterInterface;
+use yiicod\geo\base\GeoDataInterface;
+use yiicod\geo\base\GeoFinderInterface;
+use yiicod\geo\storages\StorageInterface;
 
 /**
  * Class GeoManager
  *
- * @author Dmitry Turchanin
- *
  * @package yiicod\geo\components
+ *
+ * @author Dmitry Turchanin
+ * @author Alexey Orlov
  */
-class GeoFinder extends Component implements LocatorInterface
+class GeoFinder extends Component implements GeoFinderInterface
 {
     /**
      * @var array
      */
     public $gettersList = [
         [
-            'class' => \yiicod\geo\locators\geoIpOffline\GeoIpOfflineLocator::class,
+            'class' => \yiicod\geo\adapters\geoIp2\GeoIp2CityAdapter::class,
         ],
         [
-            'class' => \yiicod\geo\locators\geoPlugin\GeoPluginLocator::class,
+            'class' => \yiicod\geo\adapters\geoPlugin\GeoPluginAdapter::class,
         ],
         [
-//            'class' => \yiicod\geo\locators\freeGeoIp\FreeGeoIpLocator::class
+            'class' => \yiicod\geo\adapters\ipstack\IpstackAdapter::class,
+        ],
+        [
+//            'class' => \yiicod\geo\adapters\freeGeoIp\FreeGeoIpLocator::class
         ],
     ];
 
@@ -41,11 +46,11 @@ class GeoFinder extends Component implements LocatorInterface
     public $duration = 604800;
 
     /**
-     * Cache provider
+     * Storage instance
      *
-     * @var Cache
+     * @var StorageInterface
      */
-    public $storage = 'cache';
+    private $storage;
 
     /**
      * Prepared country data found in the one request
@@ -55,15 +60,16 @@ class GeoFinder extends Component implements LocatorInterface
     private static $result = [];
 
     /**
-     * Gets country code by IP
+     * GeoFinder constructor.
      *
-     * @param string|null
-     *
-     * @return string
+     * @param StorageInterface $storage
+     * @param array $config
      */
-    public function getCountryCode($ip)
+    public function __construct(StorageInterface $storage, $config = [])
     {
-        return $this->getPreparedCountryData($ip)['countryCode'] ?? null;
+        parent::__construct($config);
+
+        $this->storage = $storage;
     }
 
     /**
@@ -73,9 +79,93 @@ class GeoFinder extends Component implements LocatorInterface
      *
      * @return string
      */
-    public function getCountryName($ip)
+    public function getCountryCode(string $ip): ?string
     {
-        return $this->getPreparedCountryData($ip)['countryName'] ?? null;
+        return $this->getPreparedCountryData($ip)->getCountryCode();
+    }
+
+    /**
+     * Gets country code by IP
+     *
+     * @param string|null
+     *
+     * @return string
+     */
+    public function getCountryName(string $ip): ?string
+    {
+        return $this->getPreparedCountryData($ip)->getCountryName();
+    }
+
+    /**
+     * Gets region by IP
+     *
+     * @param string $ip
+     *
+     * @return null|string
+     */
+    public function getRegion(string $ip): ?string
+    {
+        return $this->getPreparedCountryData($ip)->getRegion();
+    }
+
+    /**
+     * Gets region name by IP
+     *
+     * @param string $ip
+     *
+     * @return null|string
+     */
+    public function getRegionName(string $ip): ?string
+    {
+        return $this->getPreparedCountryData($ip)->getRegionName();
+    }
+
+    /**
+     * Gets region code by IP
+     *
+     * @param string $ip
+     *
+     * @return null|string
+     */
+    public function getRegionCode(string $ip): ?string
+    {
+        return $this->getPreparedCountryData($ip)->getRegionCode();
+    }
+
+    /**
+     * Gets city by IP
+     *
+     * @param string $ip
+     *
+     * @return null|string
+     */
+    public function getCity(string $ip): ?string
+    {
+        return $this->getPreparedCountryData($ip)->getCity();
+    }
+
+    /**
+     * Gets latitude by IP
+     *
+     * @param string $ip
+     *
+     * @return null|string
+     */
+    public function getLatitude(string $ip): ?string
+    {
+        return $this->getPreparedCountryData($ip)->getLatitude();
+    }
+
+    /**
+     * Gets longitude by IP
+     *
+     * @param string $ip
+     *
+     * @return null|string
+     */
+    public function getLongitude(string $ip): ?string
+    {
+        return $this->getPreparedCountryData($ip)->getLongitude();
     }
 
     /**
@@ -83,34 +173,34 @@ class GeoFinder extends Component implements LocatorInterface
      *
      * @param null|string|mixed $ip
      *
-     * @return null|array
+     * @return GeoDataInterface
      */
-    public function getPreparedCountryData($ip)
+    public function getPreparedCountryData($ip): GeoDataInterface
     {
         if (true === isset(self::$result[$ip])) {
             return self::$result[$ip];
         }
 
-        /** @var Cache $cache */
-        $cache = Yii::$app->{$this->storage};
-
-        self::$result[$ip] = $cache->getOrSet(sprintf('geo-finder-%s', $ip), function () use ($ip) {
+        self::$result[$ip] = $this->storage->getOrSet($ip, function () use ($ip) {
             foreach ($this->gettersList as $key => $config) {
                 try {
-                    $getter = Yii::createObject(array_merge(['storage' => $this->storage], $config));
-                    if (!($getter instanceof LocatorAbstract)) {
+                    $adapter = Yii::createObject($config);
+
+                    if (!($adapter instanceof GeoAdapterInterface)) {
                         unset($key);
                         continue;
                     }
 
-                    return $getter->getPreparedCountryData($ip);
+                    return $adapter->getLocationData($ip);
                 } catch (Exception $e) {
                     unset($key);
                     continue;
                 }
             }
+
+            return new GeoData(['ip' => $ip]);
         }, $this->duration);
 
-        return self::$result[$ip] ?? null;
+        return self::$result[$ip];
     }
 }

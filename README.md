@@ -27,20 +27,31 @@ to the require section of your composer.json.
 
 #### Config for frontend
 ```php
+'container' => [
+    'singletons' => [
+        \yiicod\geo\storages\StorageInterface::class => [
+            'class' => \yiicod\geo\storages\CacheStorage::class,
+        ],
+    ],
+],
 'components' => [
     'geoFinder' => [
         'class' => yiicod\geo\components\GeoFinder::class,
         'gettersList' => [
             [
-                'class' => \yiicod\geo\components\locators\geoIpOffline\GeoIpOfflineLocator::class,
-                'geoIpConfig' => [
-                    'class' => \yiicod\geo\components\locators\geoIpOffline\GeoIpWrapper::class,
-                    'databaseAlias' => '@frontend/runtime'
-                ]
+                'class' => \yiicod\geo\adapters\geoIp2\GeoIp2CityAdapter::class,
+                'databaseConfig' => [
+                    'class' => \yiicod\geo\adapters\geoIp2\GeoIp2Database::class,
+                    'databaseAlias' => '@frontend/runtime',
+                ],
             ],
             [
-                'class' => \yiicod\geo\components\locators\freeGeoIp\FreeGeoIpLocator::class
-            ]
+                'class' => \yiicod\geo\adapters\ipstack\IpstackAdapter::class,
+                'apiKey' => 'API-key'
+            ],
+            [
+                'class' => \yiicod\geo\adapters\geoPlugin\GeoPluginAdapter::class,
+            ],
         ],
     ],
 ],
@@ -49,6 +60,11 @@ to the require section of your composer.json.
 
 #### Usage
 ```php
-\yiicod\geo\GeoGetter::getCountryName()
-\yiicod\geo\GeoGetter::getCountryCode()
+\yiicod\geo\GeoGetter::getCountryName($ip)
+\yiicod\geo\GeoGetter::getCountryCode($ip)
+\yiicod\geo\GeoGetter::getRegionName($ip),
+\yiicod\geo\GeoGetter::getRegionCode($ip),
+\yiicod\geo\GeoGetter::getCity($ip),
+\yiicod\geo\GeoGetter::getLatitude($ip),
+\yiicod\geo\GeoGetter::getLongitude($ip),
 ````
